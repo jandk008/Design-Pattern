@@ -1,0 +1,285 @@
+package design.pattern;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.LinkedList;
+
+import org.gnu.stealthp.rsslib.RSSChannel;
+import org.gnu.stealthp.rsslib.RSSException;
+import org.gnu.stealthp.rsslib.RSSHandler;
+import org.gnu.stealthp.rsslib.RSSImage;
+import org.gnu.stealthp.rsslib.RSSItem;
+import org.gnu.stealthp.rsslib.RSSParser;
+
+import com.google.gdata.data.codesearch.File;
+
+/**
+ * <P>
+ * this interface defines the basic methods which are for delete the target
+ * words accepting several rss resource, output the result to console or saved
+ * in file
+ * </P>
+ *
+ * @author Zidane_Chow
+ */
+
+interface ContentsHandler {
+	LinkedList<ChannelNode> convertByDelete(String target, String... url);
+
+	void outputToConsole(LinkedList<ChannelNode> contents);
+
+	void outputToFile(LinkedList<ChannelNode> contents, File file);
+}
+
+/**
+ * this is the proxy class to make the implementation unable to access
+ *
+ * @author Zidane_Chow
+ *
+ */
+
+public class HandlerProxy implements ContentsHandler {
+
+	// reference to the real implementation
+	HandlerImpl handler = new HandlerImpl();
+
+	/**
+	 * <p>
+	 * call the method of real implementation
+	 * </p>
+	 */
+	public LinkedList<ChannelNode> convertByDelete(String target, String... url) {
+		return handler.convertByDelete(target, url);
+	}
+
+	public void outputToConsole(LinkedList<ChannelNode> contents) {
+		handler.outputToConsole(contents);
+	}
+
+	public void outputToFile(LinkedList<ChannelNode> contents, File file) {
+		handler.outputToFile(contents, file);
+	}
+
+	public static void main(String[] args) {
+		String localRSS = "C:\\Users\\Zidane_Chow\\Desktop\\rss.html";
+		ContentsHandler proxy = new HandlerProxy();
+		proxy.outputToConsole(proxy.convertByDelete("NewsPicks", localRSS));
+	}
+
+}
+
+/**
+ * Implementation for the interface
+ *
+ * @author Zidane_Chow
+ */
+class HandlerImpl implements ContentsHandler {
+
+	@SuppressWarnings("unchecked")
+	public LinkedList<ChannelNode> convertByDelete(String target, String... url) {
+		// TODO 自動生成されたメソッド・スタブ
+		if (url == null || url.length == 0) {
+			return null;
+		}
+
+		LinkedList<ChannelNode> list = new LinkedList<ChannelNode>();
+		RSSChannel channel;
+		ChannelNode node;
+		// result
+		StringBuffer result = null;
+		try {
+			// for each RSS resource
+			for (String ur : url) {
+				channel = getTargetChannel(ur);
+				result = new StringBuffer();
+
+				// deal with the channel
+				node = new ChannelNode(channel.getTitle(),
+						channel.getDescription(), channel.getLink(),
+						channel.getLanguage(), channel.getCopyright(),
+						channel.getGenerator(), channel.getRSSImage());
+				result.append("チャンネルタイトル： " + node.getTitle() + "\n");
+				result.append("チャンネルリンク： " + node.getLink() + "\n");
+				result.append("チャンネル概要: " + node.getDescription() + "\n");
+				result.append("チャンネル言語： " + node.getLanguage() + "\n");
+				result.append("チャンネルcopyright： " + node.getCopyright() + "\n");
+				result.append("チャンネルgenerator： " + node.getGenerator() + "\n");
+				result.append("チャンネルImage: " + node.getImage() + "\n");
+
+				// deal with the items
+				node.setItems(channel.getItems());
+				int itemNo = 1;
+				for (RSSItem item : node.getItems()) {
+					result.append("\n");
+					result.append("Item" + itemNo + ":" + "\n");
+
+					result.append("item author： " + item.getAuthor() + "\n");
+					result.append("item title： " + item.getTitle() + "\n");
+					result.append("item description： " + item.getDescription()
+							+ "\n");
+					result.append("link： " + item.getLink() + "\n");
+					result.append("pubdate: " + item.getPubDate() + "\n");
+
+				}
+
+				// delete the target word
+				node.setResult(result.toString().replaceAll(target, ""));
+				list.add(node);
+			}
+
+		} catch (MalformedURLException e) {
+			// TODO: handle exception
+			System.out.println("MalformedURLException 発生しました");
+			e.printStackTrace();
+		} catch (RSSException e) {
+			// TODO: handle exception
+			System.out.println("RSSException 発生しました");
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO: handle exception
+			System.out.println("IOException 発生しました");
+			e.printStackTrace();
+		}
+
+		return list;
+	}
+
+	public void outputToConsole(LinkedList<ChannelNode> contents) {
+		// TODO 自動生成されたメソッド・スタブ
+		for (ChannelNode channelNode : contents) {
+			System.out.println(channelNode.getResult());
+		}
+	}
+
+	public void outputToFile(LinkedList<ChannelNode> contents, File file) {
+		// TODO 自動生成されたメソッド・スタブ
+		outputToConsole(contents);
+
+	}
+
+	/**
+	 * <p>
+	 * according to the url, create the connection to RSS resource and return
+	 * the Channel object
+	 * </p>
+	 *
+	 * @param url
+	 *            RSS resource
+	 * @return RSSChannel
+	 */
+	private RSSChannel getTargetChannel(String ur)
+			throws MalformedURLException, RSSException, IOException {
+		RSSHandler rssHandler = new RSSHandler();
+		// URL url = new URL(ur);
+		// URLConnection connection = url.openConnection();
+		RSSParser.parseXmlFile(ur, rssHandler, false);
+		return rssHandler.getRSSChannel();
+	}
+}
+
+class ChannelNode {
+
+	// title of channel
+	private String title;
+	// link of channel
+	private String link;
+	// description of channel
+	private String description;
+	// language of channel
+	private String language;
+	// copyright of channel
+	private String copyright;
+	// generator of channel
+	private String generator;
+	// image of channel
+	private RSSImage image;
+	// list of Items
+	private LinkedList<RSSItem> items = new LinkedList<RSSItem>();
+	// converted result
+	private String result;
+
+	ChannelNode(String t, String d, String l, String a, String c, String g,
+			RSSImage i) {
+		language = a;
+		title = t;
+		description = d;
+		link = l;
+		copyright = c;
+		generator = g;
+		image = i;
+	}
+
+	public String getResult() {
+		return result;
+	}
+
+	public void setResult(String result) {
+		this.result = result;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	public String getLink() {
+		return link;
+	}
+
+	public void setLink(String link) {
+		this.link = link;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public String getLanguage() {
+		return language;
+	}
+
+	public void setLanguage(String language) {
+		this.language = language;
+	}
+
+	public String getCopyright() {
+		return copyright;
+	}
+
+	public void setCopyright(String copyright) {
+		this.copyright = copyright;
+	}
+
+	public String getGenerator() {
+		return generator;
+	}
+
+	public void setGenerator(String generator) {
+		this.generator = generator;
+	}
+
+	public RSSImage getImage() {
+		return image;
+	}
+
+	public void setImage(RSSImage image) {
+		this.image = image;
+	}
+
+	public void setItems(LinkedList<RSSItem> items) {
+		this.items = items;
+	}
+
+	public LinkedList<RSSItem> getItems() {
+		return items;
+	}
+}
