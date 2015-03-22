@@ -13,7 +13,7 @@ import org.gnu.stealthp.rsslib.RSSImage;
 import org.gnu.stealthp.rsslib.RSSItem;
 import org.gnu.stealthp.rsslib.RSSParser;
 
-import com.google.gdata.data.codesearch.File;
+import java.io.File;
 
 /**
  * <P>
